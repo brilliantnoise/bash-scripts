@@ -93,6 +93,7 @@ function runDeploy(dir, branch, pm2Name, cb) {
     `sudo -u ${GIT_USER} git -c safe.directory='${safeDir}' -C '${safeDir}' reset --hard origin/${branch}`,
     `cd '${safeDir}'`,
     `(npm ci || npm install)`,
+    `npm run build --if-present`,
     `pm2 restart '${safePm2}'`
   ].join(' && ');
   exec(cmds, { shell: '/bin/bash' }, (err, stdout, stderr) => {
