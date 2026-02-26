@@ -74,6 +74,13 @@ setup_deploy_key() {
   mkdir -p "${SSH_DIR}"
   chown "${GIT_USER}:${GIT_USER}" "${SSH_DIR}"
   chmod 700 "${SSH_DIR}"
+  # Ensure GitHub host key is in known_hosts so git ls-remote doesn't prompt (exit 128)
+  local known_hosts="${SSH_DIR}/known_hosts"
+  if ! grep -q "github.com" "${known_hosts}" 2>/dev/null; then
+    ssh-keyscan -t ed25519,rsa github.com 2>/dev/null | sudo -u "${GIT_USER}" tee -a "${known_hosts}" >/dev/null
+    chown "${GIT_USER}:${GIT_USER}" "${known_hosts}"
+    chmod 644 "${known_hosts}"
+  fi
   
   # Generate SSH key if it doesn't exist
   if [[ ! -f "${key_path}" ]]; then

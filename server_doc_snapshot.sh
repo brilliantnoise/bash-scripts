@@ -241,7 +241,7 @@ if [[ -d "$WWW_ROOT" ]]; then
       [[ -d "$app_dir" ]] || continue
       app_name="$(basename "$app_dir")"
 
-      # collect env folders: known ones + any other git-backed subdir
+      # collect env folders: known ones + any other git-backed subdir + branches/* (add_branch.sh)
       envs=()
       for e in live dev staging; do [[ -d "$app_dir/$e" ]] && envs+=("$e"); done
       for extra in "$app_dir"/*; do
@@ -249,6 +249,12 @@ if [[ -d "$WWW_ROOT" ]]; then
         ebase="$(basename "$extra")"
         [[ " ${envs[*]} " == *" $ebase "* ]] && continue
         have_git_repo "$extra" && envs+=("$ebase")
+      done
+      for branch_dir in "$app_dir/branches"/*; do
+        [[ -d "$branch_dir" ]] || continue
+        have_git_repo "$branch_dir" || continue
+        ebase="branches/$(basename "$branch_dir")"
+        [[ " ${envs[*]} " == *" $ebase "* ]] || envs+=("$ebase")
       done
       [[ ${#envs[@]} -eq 0 ]] && continue
 

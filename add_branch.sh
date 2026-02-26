@@ -99,7 +99,10 @@ clone_or_pull () {
     git_as_deploy "git clone --branch '${branch}' --single-branch '${REPO_URL}' '${target_dir}'"
   fi
 
-  chown -R "${APP_USER}:${APP_USER}" "${target_dir}"
+  # Same as add_app.sh: gitdeploy owns (for git pull/fetch), APP_USER group (for npm/pm2)
+  chown -R "${GIT_USER}:${APP_USER}" "${target_dir}"
+  chmod -R g+rwX "${target_dir}"
+  find "${target_dir}" -type d -exec chmod g+s {} \;
 }
 
 
