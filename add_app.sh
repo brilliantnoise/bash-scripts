@@ -309,6 +309,7 @@ start_pm2(){
     npm config set fund false >/dev/null 2>&1 || true
     npm config set audit false >/dev/null 2>&1 || true
     CI=1 npm ci --no-audit --no-fund --unsafe-perm || CI=1 npm install --no-audit --no-fund --unsafe-perm
+    npm run build --if-present
     pm2 start ecosystem.config.cjs || pm2 restart ecosystem.config.cjs
   '
 }
