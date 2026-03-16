@@ -205,9 +205,9 @@ DEFAULT_BRANCH="$(
   git_as_deploy "git ls-remote --symref '${REPO_URL_SSH}' HEAD 2>/dev/null" \
   | sed -nE 's#^ref: refs/heads/([[:graph:]]+)[[:space:]]+HEAD$#\1#p' \
   | head -n1
-)"
+)" || true
 if [[ -z "${DEFAULT_BRANCH}" ]]; then
-  DEFAULT_BRANCH="$(git_as_deploy "git ls-remote '${REPO_URL_SSH}' 2>/dev/null" | awk -F/ '/refs\/heads\/(main|master)$/ {print $NF; exit}')"
+  DEFAULT_BRANCH="$(git_as_deploy "git ls-remote '${REPO_URL_SSH}' 2>/dev/null" | awk -F/ '/refs\/heads\/(main|master)$/ {print $NF; exit}')" || true
 fi
 : "${DEFAULT_BRANCH:=main}"
 
