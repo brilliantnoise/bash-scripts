@@ -361,7 +361,7 @@ issue_tls "${LIVE_DOMAIN}"
 bash "${SCRIPT_DIR}/setup_webhook_server.sh"
 
 # ---- hooks.json entries for live/dev/staging + secrets ----
-python3 - "${WEBHOOK_DIR}/hooks.json" "${APP_NAME}" "${REPO_URL}" "${DEFAULT_BRANCH}" \
+HOOK_OUTPUT="$(python3 - "${WEBHOOK_DIR}/hooks.json" "${APP_NAME}" "${REPO_URL}" "${DEFAULT_BRANCH}" \
          "${LIVE_DIR}" "${DEV_DIR}" "${STAGING_DIR}" \
          "${LIVE_DOMAIN}" "${DEV_DOMAIN}" "${STAGING_DOMAIN}" <<'PY'
 import json, os, sys, re, secrets
@@ -497,11 +497,14 @@ print((dev_simple or {}).get("secret", ""))
 print((staging_simple or {}).get("secret", ""))
 print((gh or {}).get("secret", ""))
 PY
+)"
 
-read -r LIVE_HOOK_SECRET || LIVE_HOOK_SECRET=""
-read -r DEV_HOOK_SECRET || DEV_HOOK_SECRET=""
-read -r STAGING_HOOK_SECRET || STAGING_HOOK_SECRET=""
-read -r GH_SECRET || GH_SECRET=""
+{
+  read -r LIVE_HOOK_SECRET || LIVE_HOOK_SECRET=""
+  read -r DEV_HOOK_SECRET || DEV_HOOK_SECRET=""
+  read -r STAGING_HOOK_SECRET || STAGING_HOOK_SECRET=""
+  read -r GH_SECRET || GH_SECRET=""
+} <<< "${HOOK_OUTPUT}"
 
 # restart webhook server to pick up changes
 sudo -u "${APP_USER}" bash -lc '
