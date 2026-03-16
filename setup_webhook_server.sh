@@ -121,7 +121,7 @@ const server = http.createServer((req, res) => {
     }
     let use = simpleCandidates.find(h => !!h.host && h.host === host) || simpleCandidates[0];
     const secret = req.headers['x-webhook-secret'];
-    if (!secret || secret !== use.secret) {
+    if (!secret || !use.secret || !timingSafeEq(secret, use.secret)) {
       return respond(res, 401, { ok: false, error: 'unauthorized' });
     }
     return runDeploy(use.dir, use.branch, use.pm2, (err, out) => {
