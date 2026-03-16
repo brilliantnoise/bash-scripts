@@ -348,7 +348,7 @@ if [[ -d "$WWW_ROOT" ]]; then
           echo "        deploy:"
           echo "          webhook_path: \"$(yaml_q "$hook_path")\""
           echo "          webhook_secret: \"$(yaml_q "$hook_secret")\""
-          local curl_host="${domain:-$hook_host}"
+          curl_host="${domain:-$hook_host}"
           if [[ -n "$curl_host" ]]; then
             echo "          curl_example: |"
             echo "            curl -X POST \"https://${curl_host}${hook_path}\" \\"
