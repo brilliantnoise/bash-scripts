@@ -106,6 +106,15 @@ If `/opt/deploy-webhooks` already exists, the script:
   - Modify `/etc/ssh/sshd_config` or other global SSH server settings.
 - At completion, the script prints a message indicating that you can now run a separate script (`02_add_app.sh`) to register specific applications and their deployment hooks.
 
+### Optional: self-hosted Supabase (Docker + nginx path routing)
+
+Two helper scripts complement the stack above:
+
+- **`install_supabase.sh`** (run as `root`) — installs Docker if needed, clones the official [Supabase Docker](https://github.com/supabase/supabase/tree/master/docker) layout under `/opt/supabase/docker`, generates secrets via upstream `utils/generate-keys.sh`, sets `SUPABASE_PUBLIC_URL` / `API_EXTERNAL_URL` / `SITE_URL` to your **HTTPS app origin** (same URL clients use for the API paths), binds Kong and the DB pooler ports to **127.0.0.1** only, and runs `docker compose up -d`.
+- **`add_supabase_to_app.sh`** (run as `root`) — for an **existing** vhost in `/etc/nginx/conf.d/<domain>.conf` (from `add_app.sh`), adds an `include` of `/etc/nginx/snippets/supabase-kong-proxy.conf` and writes that snippet so reserved paths (`/auth/v1`, `/rest/v1`, `/realtime/v1`, `/storage/v1`, `/functions/v1`, `/graphql/v1`, `/.well-known/oauth-authorization-server`) proxy to local Kong.
+
+Typical order: `install_supabase.sh https://app.example.com` → `add_supabase_to_app.sh app.example.com` → set app env `NEXT_PUBLIC_SUPABASE_URL=https://app.example.com` and keys from `/opt/supabase/docker/.env`.
+
 
 
 
