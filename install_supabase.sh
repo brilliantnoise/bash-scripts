@@ -86,6 +86,23 @@ patch_compose_localhost_ports() {
     "$compose"
 }
 
+# Logflare (supabase-analytics) often needs >60s on first boot for Postgres migrations; upstream
+# healthcheck (10×5s) marks the container unhealthy too soon → studio/kong never start.
+# docker-compose.override.yml is merged automatically by `docker compose`.
+write_compose_override_analytics() {
+  cat > "${SUPABASE_DOCKER_DIR}/docker-compose.override.yml" <<'YAML'
+# Managed by install_supabase.sh — do not remove unless you know why it is here.
+services:
+  analytics:
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:4000/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 45
+      start_period: 180s
+YAML
+}
+
 ensure_docker
 need_cmd git
 need_cmd openssl
@@ -153,10 +170,17 @@ POOLER_PROXY_PORT_TRANSACTION="$(grep -E '^POOLER_PROXY_PORT_TRANSACTION=' .env 
 export KONG_HTTP_PORT KONG_HTTPS_PORT POSTGRES_PORT POOLER_PROXY_PORT_TRANSACTION
 
 patch_compose_localhost_ports
+write_compose_override_analytics
 
 echo "Pulling images and starting stack (first start may take several minutes)..."
 docker compose pull
-docker compose up -d
+if ! docker compose up -d; then
+  echo ""
+  echo "❌ docker compose up failed. If supabase-analytics was unhealthy, check:"
+  echo "   sudo docker logs supabase-analytics"
+  echo "   (Small instances: Logflare may need more RAM; errors often show migration/schema issues.)"
+  exit 1
+fi
 
 # Marker for companion scripts
 {
