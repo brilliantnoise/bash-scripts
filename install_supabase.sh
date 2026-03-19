@@ -102,13 +102,23 @@ fi
 
 cd "${SUPABASE_DOCKER_DIR}"
 
+# Upstream tracks .sh as non-executable; git checkouts are often mode 644 — use -f not -x.
+if [[ ! -f ./utils/generate-keys.sh ]]; then
+  echo "docker/utils missing (incomplete copy); fetching utils only..."
+  tmp="$(mktemp -d)"
+  git clone --depth 1 --branch "${SUPABASE_GIT_REF}" "${SUPABASE_REPO}" "${tmp}/supabase"
+  cp -a "${tmp}/supabase/docker/utils" "${SUPABASE_DOCKER_DIR}/"
+  rm -rf "${tmp}"
+fi
+chmod +x ./utils/*.sh 2>/dev/null || true
+
 ENV_NEW=false
 if [[ ! -f .env ]]; then
   cp -a .env.example .env
   ENV_NEW=true
 fi
 
-if [[ -x ./utils/generate-keys.sh ]]; then
+if [[ -f ./utils/generate-keys.sh ]]; then
   if [[ "${ENV_NEW}" == true ]] || grep -q '^JWT_SECRET=your-super-secret-jwt-token' .env 2>/dev/null; then
     echo "Generating secrets (JWT, DB password, keys)..."
     sh ./utils/generate-keys.sh --update-env
@@ -116,7 +126,7 @@ if [[ -x ./utils/generate-keys.sh ]]; then
     echo "Using existing .env secrets (not re-running generate-keys.sh — avoids breaking an initialized database)."
   fi
 else
-  echo "ERROR: utils/generate-keys.sh missing under ${SUPABASE_DOCKER_DIR}"
+  echo "ERROR: utils/generate-keys.sh still missing under ${SUPABASE_DOCKER_DIR}"
   exit 1
 fi
 
