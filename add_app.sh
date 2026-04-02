@@ -340,8 +340,17 @@ server {
     proxy_set_header X-Forwarded-Proto \$scheme;
   }
 
-  location ^~ /_deploy/ { proxy_pass http://127.0.0.1:${WEBHOOK_PORT}; }
-  location ^~ /_github/ { proxy_pass http://127.0.0.1:${WEBHOOK_PORT}; }
+  location ^~ /_deploy/ {
+    proxy_pass http://127.0.0.1:${WEBHOOK_PORT};
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+  }
+
+  location ^~ /_github/ {
+    proxy_pass http://127.0.0.1:${WEBHOOK_PORT};
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+  }
 }
 EOF
 }

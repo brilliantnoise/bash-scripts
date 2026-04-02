@@ -173,8 +173,17 @@ ssl_lines += [
     "    proxy_set_header X-Forwarded-Proto $scheme;",
     "  }",
     "",
-    f"  location ^~ /_deploy/ {{ proxy_pass http://127.0.0.1:{webhook_port}; }}",
-    f"  location ^~ /_github/ {{ proxy_pass http://127.0.0.1:{webhook_port}; }}",
+    "  location ^~ /_deploy/ {",
+    f"    proxy_pass http://127.0.0.1:{webhook_port};",
+    "    proxy_set_header Host $host;",
+    "    proxy_set_header X-Real-IP $remote_addr;",
+    "  }",
+    "",
+    "  location ^~ /_github/ {",
+    f"    proxy_pass http://127.0.0.1:{webhook_port};",
+    "    proxy_set_header Host $host;",
+    "    proxy_set_header X-Real-IP $remote_addr;",
+    "  }",
     "}",
     "",
 ]
@@ -302,8 +311,17 @@ server {
     proxy_set_header X-Forwarded-Proto \$scheme;
   }
 
-  location ^~ /_deploy/ { proxy_pass http://127.0.0.1:${WEBHOOK_PORT}; }
-  location ^~ /_github/ { proxy_pass http://127.0.0.1:${WEBHOOK_PORT}; }
+  location ^~ /_deploy/ {
+    proxy_pass http://127.0.0.1:${WEBHOOK_PORT};
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+  }
+
+  location ^~ /_github/ {
+    proxy_pass http://127.0.0.1:${WEBHOOK_PORT};
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+  }
 }
 EOF
 }
