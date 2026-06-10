@@ -285,8 +285,10 @@ NEXT=$((DEV_PORT+1)); STAGING_PORT="$(find_free_port "${NEXT}")"
 # ---- PM2 ecosystem ----
 make_ecosystem(){
   local dir="$1" name="$2" port="$3" env="$4"
+  local pkg_script="npm"
+  [[ -f "${dir}/pnpm-lock.yaml" ]] && pkg_script="pnpm"
   cat > "${dir}/ecosystem.config.cjs" <<EOF
-module.exports = { apps: [{ name: "${name}", cwd: "${dir}", script: "npm", args: "start", env: { PORT: "${port}", NODE_ENV: "${env}" }, watch: false }] };
+module.exports = { apps: [{ name: "${name}", cwd: "${dir}", script: "${pkg_script}", args: "start", env: { PORT: "${port}", NODE_ENV: "${env}" }, watch: false }] };
 EOF
   chown "${APP_USER}:${APP_USER}" "${dir}/ecosystem.config.cjs"
 }
@@ -306,10 +308,15 @@ start_pm2(){
     set -e
     export NVM_DIR=$HOME/.nvm; . "$NVM_DIR/nvm.sh"
     cd "'"${dir}"'"
-    npm config set fund false >/dev/null 2>&1 || true
-    npm config set audit false >/dev/null 2>&1 || true
-    CI=1 npm ci --no-audit --no-fund --unsafe-perm || CI=1 npm install --no-audit --no-fund --unsafe-perm
-    npm run build --if-present
+    if [[ -f "pnpm-lock.yaml" ]]; then
+      pnpm install --frozen-lockfile
+      pnpm run build --if-present
+    else
+      npm config set fund false >/dev/null 2>&1 || true
+      npm config set audit false >/dev/null 2>&1 || true
+      CI=1 npm ci --no-audit --no-fund --unsafe-perm || CI=1 npm install --no-audit --no-fund --unsafe-perm
+      npm run build --if-present
+    fi
     pm2 start ecosystem.config.cjs || pm2 restart ecosystem.config.cjs
   '
 }

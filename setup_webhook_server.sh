@@ -87,13 +87,16 @@ function verifyGitHubSig(buf, secret, hdr) {
 function runDeploy(dir, branch, pm2Name, cb) {
   const safeDir = dir.replace(/'/g, `'\\''`);
   const safePm2 = pm2Name.replace(/'/g, `'\\''`);
+  const isPnpm = fs.existsSync(path.join(dir, 'pnpm-lock.yaml'));
+  const installCmd = isPnpm ? 'pnpm install --frozen-lockfile' : '(npm ci || npm install)';
+  const buildCmd = isPnpm ? 'pnpm run build --if-present' : 'npm run build --if-present';
   const cmds = [
     // Git 2.35+ safe.directory: trust this path for gitdeploy for these commands
     `sudo -u ${GIT_USER} git -c safe.directory='${safeDir}' -C '${safeDir}' fetch --all --prune`,
     `sudo -u ${GIT_USER} git -c safe.directory='${safeDir}' -C '${safeDir}' reset --hard origin/${branch}`,
     `cd '${safeDir}'`,
-    `(npm ci || npm install)`,
-    `npm run build --if-present`,
+    installCmd,
+    buildCmd,
     `pm2 restart '${safePm2}'`
   ].join(' && ');
   exec(cmds, { shell: '/bin/bash' }, (err, stdout, stderr) => {

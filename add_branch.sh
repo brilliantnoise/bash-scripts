@@ -141,12 +141,14 @@ clone_or_pull "${BRANCH_NAME}" "${BRANCH_DIR}"
 # --- PM2 ecosystem + .env ---
 make_ecosystem(){
   local dir="$1" name="$2" port="$3"
+  local pkg_script="npm"
+  [[ -f "${dir}/pnpm-lock.yaml" ]] && pkg_script="pnpm"
   cat > "${dir}/ecosystem.config.cjs" <<EOF
 module.exports = {
   apps: [{
     name: "${name}",
     cwd: "${dir}",
-    script: "npm",
+    script: "${pkg_script}",
     args: "start",
     env: { PORT: "${port}", NODE_ENV: "development" },
     watch: false
@@ -170,9 +172,13 @@ start_pm2(){
     set -e
     export NVM_DIR=$HOME/.nvm; . "$NVM_DIR/nvm.sh"
     cd "'"${dir}"'"
-    npm config set fund false >/dev/null 2>&1 || true
-    npm config set audit false >/dev/null 2>&1 || true
-    CI=1 npm ci --no-audit --no-fund --unsafe-perm || CI=1 npm install --no-audit --no-fund --unsafe-perm
+    if [[ -f "pnpm-lock.yaml" ]]; then
+      pnpm install --frozen-lockfile
+    else
+      npm config set fund false >/dev/null 2>&1 || true
+      npm config set audit false >/dev/null 2>&1 || true
+      CI=1 npm ci --no-audit --no-fund --unsafe-perm || CI=1 npm install --no-audit --no-fund --unsafe-perm
+    fi
     pm2 start ecosystem.config.cjs || pm2 restart ecosystem.config.cjs
   '
 }

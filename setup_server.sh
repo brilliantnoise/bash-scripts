@@ -58,6 +58,9 @@ sudo -u "$APP_USER" bash -lc "
   if ! command -v pm2 >/dev/null 2>&1; then
     npm install -g pm2
   fi
+  if ! command -v pnpm >/dev/null 2>&1; then
+    npm install -g pnpm
+  fi
 "
 
 # --- Shared webhook server (create once, via helper script) ---
