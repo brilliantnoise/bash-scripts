@@ -315,7 +315,7 @@ start_pm2(){
     cd "'"${dir}"'"
     if [[ -f "pnpm-lock.yaml" ]]; then
       pnpm install --frozen-lockfile
-      pnpm run build --if-present
+      pnpm run --if-present build
     else
       npm config set fund false >/dev/null 2>&1 || true
       npm config set audit false >/dev/null 2>&1 || true
