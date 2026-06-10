@@ -31,6 +31,26 @@ if [[ -n "$GIT_BIN" ]]; then
   fi
 fi
 
+# --- chown helper + sudoers rule for pnpm deploys ---
+# pnpm must own project files to chmod executables; this script re-chowns after git reset
+CHOWN_HELPER="/usr/local/bin/deploy-fix-perms-${APP_USER}"
+cat > "${CHOWN_HELPER}" <<HELPER
+#!/bin/bash
+set -e
+DIR="\$1"
+[[ -n "\$DIR" && "\$DIR" == /var/www/* ]] || { echo "Invalid path: \$DIR" >&2; exit 1; }
+chown -R ${APP_USER}:${APP_USER} "\$DIR"
+[[ -d "\$DIR/.git" ]] && chown -R ${GIT_USER}:${APP_USER} "\$DIR/.git"
+HELPER
+chmod 755 "${CHOWN_HELPER}"
+
+SUDOERS_CHOWN="/etc/sudoers.d/deploy-fix-perms-${APP_USER}"
+CHOWN_LINE="${APP_USER} ALL=(root) NOPASSWD:${CHOWN_HELPER}"
+if [[ ! -f "${SUDOERS_CHOWN}" ]] || ! grep -Fxq "${CHOWN_LINE}" "${SUDOERS_CHOWN}"; then
+  echo "${CHOWN_LINE}" > "${SUDOERS_CHOWN}"
+  chmod 440 "${SUDOERS_CHOWN}"
+fi
+
 mkdir -p "${WEBHOOK_DIR}"
 
 # --- hooks.json (ensure multi-app structure) ---
@@ -58,7 +78,10 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const os = require('os');
 const { exec } = require('child_process');
+
+const FIX_PERMS_HELPER = `/usr/local/bin/deploy-fix-perms-${os.userInfo().username}`;
 
 const GIT_USER = 'gitdeploy';
 const cfgPath = path.join(__dirname, 'hooks.json');
@@ -94,11 +117,13 @@ function runDeploy(dir, branch, pm2Name, cb) {
     // Git 2.35+ safe.directory: trust this path for gitdeploy for these commands
     `sudo -u ${GIT_USER} git -c safe.directory='${safeDir}' -C '${safeDir}' fetch --all --prune`,
     `sudo -u ${GIT_USER} git -c safe.directory='${safeDir}' -C '${safeDir}' reset --hard origin/${branch}`,
+    // pnpm needs to own the files to chmod executables after git reset (which runs as gitdeploy)
+    isPnpm ? `sudo ${FIX_PERMS_HELPER} '${safeDir}'` : null,
     `cd '${safeDir}'`,
     installCmd,
     buildCmd,
     `pm2 restart '${safePm2}'`
-  ].join(' && ');
+  ].filter(Boolean).join(' && ');
   exec(cmds, { shell: '/bin/bash' }, (err, stdout, stderr) => {
     if (err) return cb(err, stderr.toString());
     cb(null, stdout.toString());

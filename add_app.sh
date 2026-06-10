@@ -304,6 +304,11 @@ make_ecosystem "${LIVE_DIR}" "${APP_NAME}-live" "${LIVE_PORT}" "production"; mak
 # ---- Start PM2 ----
 start_pm2(){
   local dir="$1"
+  if [[ -f "${dir}/pnpm-lock.yaml" ]]; then
+    # pnpm needs to own the files to chmod executables; restore .git to gitdeploy afterwards
+    chown -R "${APP_USER}:${APP_USER}" "${dir}"
+    chown -R "${GIT_USER}:${APP_USER}" "${dir}/.git"
+  fi
   sudo -u "${APP_USER}" bash -lc '
     set -e
     export NVM_DIR=$HOME/.nvm; . "$NVM_DIR/nvm.sh"
