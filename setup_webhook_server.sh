@@ -116,10 +116,12 @@ function runDeploy(dir, branch, pm2Name, cb) {
   const installCmd = isPnpm ? 'pnpm install --frozen-lockfile' : '(npm ci || npm install)';
   const buildCmd = isPnpm ? 'pnpm run --if-present build' : 'npm run build --if-present';
   const cmds = [
+    // For pnpm apps: fix perms before git so gitdeploy can unlink APP_USER-owned files,
+    // and again after so APP_USER can chmod the gitdeploy-owned files git just created.
+    isPnpm ? `sudo ${FIX_PERMS_HELPER} '${safeDir}'` : null,
     // Git 2.35+ safe.directory: trust this path for gitdeploy for these commands
     `sudo -u ${GIT_USER} git -c safe.directory='${safeDir}' -C '${safeDir}' fetch --all --prune`,
     `sudo -u ${GIT_USER} git -c safe.directory='${safeDir}' -C '${safeDir}' reset --hard origin/${branch}`,
-    // pnpm needs to own the files to chmod executables after git reset (which runs as gitdeploy)
     isPnpm ? `sudo ${FIX_PERMS_HELPER} '${safeDir}'` : null,
     `cd '${safeDir}'`,
     installCmd,
