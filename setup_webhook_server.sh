@@ -112,17 +112,20 @@ function verifyGitHubSig(buf, secret, hdr) {
 function runDeploy(dir, branch, pm2Name, cb) {
   const safeDir = dir.replace(/'/g, `'\\''`);
   const safePm2 = pm2Name.replace(/'/g, `'\\''`);
-  const isPnpm = fs.existsSync(path.join(dir, 'pnpm-lock.yaml'));
-  const installCmd = isPnpm ? 'pnpm install --frozen-lockfile' : '(npm ci || npm install)';
-  const buildCmd = isPnpm ? 'pnpm run --if-present build' : 'npm run build --if-present';
+  // Check lockfile state BEFORE git reset (may be stale after a pnpm<->npm switch)
+  const wasPnpm = fs.existsSync(path.join(dir, 'pnpm-lock.yaml'));
+  // install/build are shell conditionals checked AFTER git reset so they always
+  // reflect the actual current lockfile, not the pre-deploy stale state.
+  const installCmd = `if [ -f 'pnpm-lock.yaml' ]; then pnpm install --frozen-lockfile; else (npm ci || npm install); fi`;
+  const buildCmd = `if [ -f 'pnpm-lock.yaml' ]; then pnpm run --if-present build; else npm run build --if-present; fi`;
   const cmds = [
-    // For pnpm apps: fix perms before git so gitdeploy can unlink APP_USER-owned files,
-    // and again after so APP_USER can chmod the gitdeploy-owned files git just created.
-    isPnpm ? `sudo ${FIX_PERMS_HELPER} '${safeDir}'` : null,
+    // Pre-git: if the dir was pnpm, fix perms so gitdeploy can unlink APP_USER-owned files
+    wasPnpm ? `sudo ${FIX_PERMS_HELPER} '${safeDir}'` : null,
     // Git 2.35+ safe.directory: trust this path for gitdeploy for these commands
     `sudo -u ${GIT_USER} git -c safe.directory='${safeDir}' -C '${safeDir}' fetch --all --prune`,
     `sudo -u ${GIT_USER} git -c safe.directory='${safeDir}' -C '${safeDir}' reset --hard origin/${branch}`,
-    isPnpm ? `sudo ${FIX_PERMS_HELPER} '${safeDir}'` : null,
+    // Post-git: if the dir is NOW pnpm, fix perms so APP_USER can chmod gitdeploy-owned files
+    `if [ -f '${safeDir}/pnpm-lock.yaml' ]; then sudo ${FIX_PERMS_HELPER} '${safeDir}'; fi`,
     `cd '${safeDir}'`,
     installCmd,
     buildCmd,
