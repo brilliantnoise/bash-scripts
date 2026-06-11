@@ -170,10 +170,12 @@ start_pm2(){
   local dir="$1"
   if [[ -f "${dir}/pnpm-lock.yaml" ]]; then
     # APP_USER owns files (pnpm needs ownership to chmod executables)
-    # GIT_USER is the group with g+rwX so it can still unlink/overwrite files during git reset
-    chown -R "${APP_USER}:${GIT_USER}" "${dir}"
-    chmod -R g+rwX "${dir}"
-    find "${dir}" -type d -exec chmod g+s {} \;
+    # GIT_USER is the group with g+rwX so it can still unlink/overwrite during git reset
+    # Exclude .git and node_modules — they can be huge and git never touches node_modules
+    find "${dir}" \( -name ".git" -o -name "node_modules" \) -prune \
+      -o -exec chown "${APP_USER}:${GIT_USER}" {} +
+    find "${dir}" \( -name ".git" -o -name "node_modules" \) -prune \
+      -o -type d -exec chmod g+rwxs {} +
     chown -R "${GIT_USER}:${GIT_USER}" "${dir}/.git"
   fi
   sudo -u "${APP_USER}" bash -lc '

@@ -39,9 +39,12 @@ cat > "${CHOWN_HELPER}" <<HELPER
 set -e
 DIR="\$1"
 [[ -n "\$DIR" && "\$DIR" == /var/www/* ]] || { echo "Invalid path: \$DIR" >&2; exit 1; }
-chown -R ${APP_USER}:${GIT_USER} "\$DIR"
-chmod -R g+rwX "\$DIR"
-find "\$DIR" -type d -exec chmod g+s {} \;
+# Exclude .git and any node_modules (at any depth) — git never touches them and they
+# can contain hundreds of thousands of files, making a full chown -R very slow.
+find "\$DIR" \( -name ".git" -o -name "node_modules" \) -prune \
+  -o -exec chown ${APP_USER}:${GIT_USER} {} +
+find "\$DIR" \( -name ".git" -o -name "node_modules" \) -prune \
+  -o -type d -exec chmod g+rwxs {} +
 [[ -d "\$DIR/.git" ]] && chown -R ${GIT_USER}:${GIT_USER} "\$DIR/.git"
 HELPER
 chmod 755 "${CHOWN_HELPER}"
