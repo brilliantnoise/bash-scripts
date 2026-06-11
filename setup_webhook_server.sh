@@ -39,8 +39,10 @@ cat > "${CHOWN_HELPER}" <<HELPER
 set -e
 DIR="\$1"
 [[ -n "\$DIR" && "\$DIR" == /var/www/* ]] || { echo "Invalid path: \$DIR" >&2; exit 1; }
-chown -R ${APP_USER}:${APP_USER} "\$DIR"
-[[ -d "\$DIR/.git" ]] && chown -R ${GIT_USER}:${APP_USER} "\$DIR/.git"
+chown -R ${APP_USER}:${GIT_USER} "\$DIR"
+chmod -R g+rwX "\$DIR"
+find "\$DIR" -type d -exec chmod g+s {} \;
+[[ -d "\$DIR/.git" ]] && chown -R ${GIT_USER}:${GIT_USER} "\$DIR/.git"
 HELPER
 chmod 755 "${CHOWN_HELPER}"
 

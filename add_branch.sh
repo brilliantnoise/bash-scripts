@@ -169,9 +169,12 @@ make_env "${BRANCH_DIR}" "${BRANCH_PORT}"
 start_pm2(){
   local dir="$1"
   if [[ -f "${dir}/pnpm-lock.yaml" ]]; then
-    # pnpm needs to own the files to chmod executables; restore .git to gitdeploy afterwards
-    chown -R "${APP_USER}:${APP_USER}" "${dir}"
-    chown -R "${GIT_USER}:${APP_USER}" "${dir}/.git"
+    # APP_USER owns files (pnpm needs ownership to chmod executables)
+    # GIT_USER is the group with g+rwX so it can still unlink/overwrite files during git reset
+    chown -R "${APP_USER}:${GIT_USER}" "${dir}"
+    chmod -R g+rwX "${dir}"
+    find "${dir}" -type d -exec chmod g+s {} \;
+    chown -R "${GIT_USER}:${GIT_USER}" "${dir}/.git"
   fi
   sudo -u "${APP_USER}" bash -lc '
     set -e
